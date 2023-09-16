@@ -1,7 +1,8 @@
 #![feature(iter_intersperse)]
+use std::num::NonZeroU8;
 use std::fmt::{self, Display};
 
-type Digit = u8; // TODO may use an enum with 9 variants if we're feeling extra spicy
+type Digit = NonZeroU8; // TODO may use an enum with 9 variants if we're feeling extra spicy
 
 type Cell = Option<Digit>;
 
@@ -26,7 +27,7 @@ impl Grid {
             for (i, c) in line.chars().enumerate() {
                 match c {
                     ' ' => {},
-                    '0'..='9' => { row[i] = Some(c.to_digit(10).unwrap() as u8); }
+                    '1'..='9' => { row[i] = Some(c.to_digit(10).and_then(|d| (d as u8).try_into().ok()).unwrap()); }
                     _ => { return Err("unexpected character"); }
                 }
             }
@@ -70,7 +71,7 @@ impl Grid {
         if let Some((r, c)) = unfilled {
             for digit in 1..=9 {
                 let mut new_grid = self.clone();
-                new_grid.cells[r][c] = Some(digit);
+                new_grid.cells[r][c] = Some(digit.try_into().unwrap());
                 let (r, c) = (r as u8, c as u8);
                 if !(new_grid.is_row_ok(r) && new_grid.is_col_ok(c) && new_grid.is_house_ok(Self::house(r, c))) {
                     continue;
@@ -93,7 +94,7 @@ impl Grid {
 
 impl Display for Grid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let show_cell = |c: &Cell| c.map_or('.', |n| char::from_digit(n.into(), 10).unwrap());
+        let show_cell = |c: &Cell| c.map_or('.', |n| char::from_digit(u8::from(n).into(), 10).unwrap());
         let is_alt = f.alternate();
         let show_row = |row: &[Cell]| {
             let row_chars = row.iter().map(show_cell);
@@ -122,7 +123,7 @@ where I: 'a + IntoIterator<Item = &'a Cell>
     let mut present = [false; 9];
     // filter `None` and unwrap `Some`
     for digit in cell_iter.into_iter().filter_map(|&x| x) {
-        let index = (digit - 1) as usize;
+        let index = u8::from(digit) as usize - 1;
         if present[index] {
             return false;
         }
